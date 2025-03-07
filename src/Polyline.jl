@@ -7,19 +7,23 @@ export encode_polyline, decode_polyline
 """
     encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
 
-TBW
+Encodes a sequence of lat,lng points into a polyline string using Google's encoding algorithm.
 """
 function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
     encoded = ""
-    prev_lat = 0
-    prev_lon = 0
+    prev_lat = 0  # Store the previous lat value for delta encoding
+    prev_lon = 0  # Store the previous lng value for delta encoding
     for (lat, lon) in points
+        # Step 1: Multiply each latitude and longitude by 1e5 and round to integer
         ilat = round(Int, lat * 1e5)
         ilon = round(Int, lon * 1e5)
+        # Step 2: Calculate the difference from previous point
         dlat = ilat - prev_lat
         dlon = ilon - prev_lon
+        # Store current points for next iteration
         prev_lat = ilat
         prev_lon = ilon
+        # Step 3: Encode each latitude and longitude difference
         encoded *= encode_value(dlat)
         encoded *= encode_value(dlon)
     end
@@ -29,37 +33,48 @@ end
 """
     encode_value(n::Int)::String
 
-TBW
+Encodes a single coordinate difference value using Google's encoding algorithm.
 """
 function encode_value(n::Int)::String
+    # Step 4: Take the binary value and left-shift it one bit
+    # Step 5: If the original number is negative, invert this encoding
     value = n < 0 ? ~(n << 1) : (n << 1)
     chunks = UInt8[]
+    # Step 6: Break the binary value out into 5-bit chunks
     while value >= 0x20
+        # Step 7: For each 5-bit chunk, OR it with 0x20 if another bit chunk follows
         push!(chunks, UInt8((0x20 | (value & 0x1f))))
         value >>= 5
     end
+    # Add the last chunk
     push!(chunks, UInt8(value))
+    # Step 8: Convert each value to decimal and add 63
+    # Step 9: Convert each decimal value to its ASCII equivalent
     return join(Char.(chunks .+ 63))
 end
 
 """
     decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
 
-TBW
+Decodes a polyline string into a sequence of lat,lng points using Google's encoding algorithm.
 """
 function decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
     points = Tuple{Float64, Float64}[]
     index = 1
     len = length(encoded)
-    prev_lat = 0
-    prev_lon = 0
+    prev_lat = 0  # Store the previous lat value for delta decoding
+    prev_lon = 0  # Store the previous lng value for delta decoding
     while index <= len
+        # Step 1: Decode the latitude difference
         lat, shift = decode_value(encoded, index)
         index = shift + 1
+        # Step 2: Decode the longitude difference
         lon, shift = decode_value(encoded, index)
         index = shift + 1
+        # Step 3: Add previous values to restore original coordinates
         prev_lat += lat
         prev_lon += lon
+        # Step 4: Convert back to decimal degrees by dividing by 1e5
         push!(points, (prev_lat / 1e5, prev_lon / 1e5))
     end
     return points
@@ -68,22 +83,27 @@ end
 """
     decode_value(encoded::String, index::Int)::Tuple{Int, Int}
 
-TBW
+Decodes a single coordinate difference value from the polyline string.
+Returns the decoded value and the new string index.
 """
 function decode_value(encoded::String, index::Int)::Tuple{Int, Int}
     result = 0
     shift = 0
     byte = 0x20
+    # Step 1: Read chunks of 5 bits until we find a chunk without the continuation bit
     while index <= length(encoded) && (byte & 0x20) != 0
+        # Step 2: Each byte is ASCII value - 63 to restore original 5-bit chunk
         byte = UInt8(encoded[index]) - 63
+        # Step 3: Accumulate the 5-bit chunks into the result
         result |= (byte & 0x1f) << shift
         shift += 5
         index += 1
     end
+    # Step 4: Handle the sign bit and right-shift to restore original value
     if (result & 1) != 0
-        result = ~(result >> 1)
+        result = ~(result >> 1)  # Restore negative values
     else
-        result >>= 1
+        result >>= 1  # Restore positive values
     end
 
     (result, index - 1)
