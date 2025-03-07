@@ -1,9 +1,14 @@
 module Polyline
 
-using PrecompileTools
+using PrecompileTools: @setup_workload, @compile_workload
 
 export encode_polyline, decode_polyline
 
+"""
+    encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
+
+TBW
+"""
 function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
     encoded = ""
     prev_lat = 0
@@ -21,25 +26,27 @@ function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
     return encoded
 end
 
+"""
+    encode_value(n::Int)::String
+
+TBW
+"""
 function encode_value(n::Int)::String
-    shifted = n << 1
-    if n < 0
-        shifted = ~shifted
-    end
+    value = n < 0 ? ~(n << 1) : (n << 1)
     chunks = UInt8[]
-    while true
-        chunk = shifted & 0x1f
-        shifted = shifted >> 5
-        push!(chunks, chunk)
-        shifted == 0 && break
+    while value >= 0x20
+        push!(chunks, UInt8((0x20 | (value & 0x1f))))
+        value >>= 5
     end
-    reversed = reverse(chunks)
-    for i in 1:length(reversed)-1
-        reversed[i] |= 0x20
-    end
-    join(Char(c + 63) for c in reversed)
+    push!(chunks, UInt8(value))
+    return join(Char.(chunks .+ 63))
 end
 
+"""
+    decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
+
+TBW
+"""
 function decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
     points = Tuple{Float64, Float64}[]
     index = 1
@@ -58,6 +65,11 @@ function decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
     return points
 end
 
+"""
+    decode_value(encoded::String, index::Int)::Tuple{Int, Int}
+
+TBW
+"""
 function decode_value(encoded::String, index::Int)::Tuple{Int, Int}
     result = 0
     shift = 0
@@ -95,7 +107,6 @@ end
         # should be the same
         decode_polyline(encoded)
         encode_polyline(points)
-
     end
 end
 
