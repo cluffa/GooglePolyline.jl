@@ -1,0 +1,10 @@
+name = "Polyline"
+uuid = "5c356c97-f151-4c75-a292-24b83265d494"
+authors = ["cluffa <alexcluff16@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+
+[compat]
+PrecompileTools = "1.2.1"
