@@ -10,7 +10,8 @@ export encode_polyline, decode_polyline
 Encodes a sequence of lat,lng points into a polyline string using Google's encoding algorithm.
 """
 function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
-    buf = IOBuffer()
+    # Preallocate buffer with a reasonable size estimate (6 chars per coordinate * 2 coordinates per point)
+    buf = IOBuffer(sizehint=12*length(points))
     prev_lat = 0  # Store the previous lat value for delta encoding
     prev_lon = 0  # Store the previous lng value for delta encoding
     for (lat, lon) in points
@@ -22,34 +23,28 @@ function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
         dlon = ilon - prev_lon
         prev_lat = ilat
         prev_lon = ilon
-        # Step 3: Encode each latitude and longitude difference
-        write(buf, encode_value(dlat))
-        write(buf, encode_value(dlon))
+        # Step 3: Encode each latitude and longitude difference using shared buffer
+        encode_value!(dlat, buf)
+        encode_value!(dlon, buf)
     end
     return String(take!(buf))
 end
 
+
 """
-    encode_value(n::Int)::String
+    encode_value!(n::Int, buf::IOBuffer)
 
 Encodes a single coordinate difference value using Google's encoding algorithm.
 """
-function encode_value(n::Int)::String
-    # Step 4: Take the binary value and left-shift it one bit
-    # Step 5: If the original number is negative, invert this encoding
+function encode_value!(n::Int, buf::IOBuffer)::Nothing
     value = n < 0 ? ~(n << 1) : (n << 1)
-    chars = Char[]
-    # Step 6: Break the binary value out into 5-bit chunks
     while value >= 0x20
-        # Step 7: OR each 5-bit chunk with 0x20 if another chunk follows
-        # Step 8: Add 63 to each value and convert to ASCII
         byte = (0x20 | (value & 0x1f)) + 63
-        push!(chars, Char(byte))
+        write(buf, Char(byte))
         value >>= 5
     end
-    # Add the final chunk
-    push!(chars, Char(value + 63))
-    return join(chars)
+    write(buf, Char(value + 63))
+    return nothing
 end
 
 """
