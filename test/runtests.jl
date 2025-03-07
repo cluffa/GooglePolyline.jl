@@ -1,4 +1,4 @@
-using Test
+using Test, Chairmarks
 using Polyline
 
 encoded = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
@@ -24,3 +24,5 @@ end
     end
 end
 
+@info @b decode_polyline(encoded)
+@info @b encode_polyline(points)

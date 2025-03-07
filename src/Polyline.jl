@@ -10,7 +10,7 @@ export encode_polyline, decode_polyline
 Encodes a sequence of lat,lng points into a polyline string using Google's encoding algorithm.
 """
 function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
-    encoded = ""
+    buf = IOBuffer()
     prev_lat = 0  # Store the previous lat value for delta encoding
     prev_lon = 0  # Store the previous lng value for delta encoding
     for (lat, lon) in points
@@ -20,14 +20,13 @@ function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
         # Step 2: Calculate the difference from previous point
         dlat = ilat - prev_lat
         dlon = ilon - prev_lon
-        # Store current points for next iteration
         prev_lat = ilat
         prev_lon = ilon
         # Step 3: Encode each latitude and longitude difference
-        encoded *= encode_value(dlat)
-        encoded *= encode_value(dlon)
+        write(buf, encode_value(dlat))
+        write(buf, encode_value(dlon))
     end
-    return encoded
+    return String(take!(buf))
 end
 
 """
@@ -39,18 +38,18 @@ function encode_value(n::Int)::String
     # Step 4: Take the binary value and left-shift it one bit
     # Step 5: If the original number is negative, invert this encoding
     value = n < 0 ? ~(n << 1) : (n << 1)
-    chunks = UInt8[]
+    chars = Char[]
     # Step 6: Break the binary value out into 5-bit chunks
     while value >= 0x20
-        # Step 7: For each 5-bit chunk, OR it with 0x20 if another bit chunk follows
-        push!(chunks, UInt8((0x20 | (value & 0x1f))))
+        # Step 7: OR each 5-bit chunk with 0x20 if another chunk follows
+        # Step 8: Add 63 to each value and convert to ASCII
+        byte = (0x20 | (value & 0x1f)) + 63
+        push!(chars, Char(byte))
         value >>= 5
     end
-    # Add the last chunk
-    push!(chunks, UInt8(value))
-    # Step 8: Convert each value to decimal and add 63
-    # Step 9: Convert each decimal value to its ASCII equivalent
-    return join(Char.(chunks .+ 63))
+    # Add the final chunk
+    push!(chars, Char(value + 63))
+    return join(chars)
 end
 
 """
@@ -60,16 +59,17 @@ Decodes a polyline string into a sequence of lat,lng points using Google's encod
 """
 function decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
     points = Tuple{Float64, Float64}[]
+    cu = codeunits(encoded)
+    len = length(cu)
     index = 1
-    len = length(encoded)
     prev_lat = 0  # Store the previous lat value for delta decoding
     prev_lon = 0  # Store the previous lng value for delta decoding
     while index <= len
         # Step 1: Decode the latitude difference
-        lat, shift = decode_value(encoded, index)
+        lat, shift = decode_value(cu, index)
         index = shift + 1
         # Step 2: Decode the longitude difference
-        lon, shift = decode_value(encoded, index)
+        lon, shift = decode_value(cu, index)
         index = shift + 1
         # Step 3: Add previous values to restore original coordinates
         prev_lat += lat
@@ -81,32 +81,27 @@ function decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
 end
 
 """
-    decode_value(encoded::String, index::Int)::Tuple{Int, Int}
+    decode_value(encoded::AbstractVector{UInt8}, index::Int)::Tuple{Int, Int}
 
 Decodes a single coordinate difference value from the polyline string.
 Returns the decoded value and the new string index.
 """
-function decode_value(encoded::String, index::Int)::Tuple{Int, Int}
+function decode_value(encoded::AbstractVector{UInt8}, index::Int)::Tuple{Int, Int}
     result = 0
     shift = 0
     byte = 0x20
     # Step 1: Read chunks of 5 bits until we find a chunk without the continuation bit
-    while index <= length(encoded) && (byte & 0x20) != 0
+    @inbounds while index <= length(encoded) && (byte & 0x20) != 0
         # Step 2: Each byte is ASCII value - 63 to restore original 5-bit chunk
-        byte = UInt8(encoded[index]) - 63
+        byte = encoded[index] - 63
         # Step 3: Accumulate the 5-bit chunks into the result
         result |= (byte & 0x1f) << shift
         shift += 5
         index += 1
     end
     # Step 4: Handle the sign bit and right-shift to restore original value
-    if (result & 1) != 0
-        result = ~(result >> 1)  # Restore negative values
-    else
-        result >>= 1  # Restore positive values
-    end
-
-    (result, index - 1)
+    result = (result & 1) != 0 ? ~(result >> 1) : result >> 1
+    return (result, index - 1)
 end
 
 @setup_workload begin
