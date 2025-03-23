@@ -1,11 +1,11 @@
-# Polyline.jl
+# GooglePolyline.jl
 
 A Julia implementation for encoding and decoding [Google's Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm).
 
 ## Usage
 
 ```julia
-using Polyline
+using GooglePolyline
 
 # Encode coordinates
 points = [

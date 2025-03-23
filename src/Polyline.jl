@@ -1,4 +1,4 @@
-module Polyline
+module GooglePolyline
 
 using PrecompileTools: @setup_workload, @compile_workload
 
@@ -120,4 +120,4 @@ end
     end
 end
 
-end # module Polyline
+end # module GooglePolyline

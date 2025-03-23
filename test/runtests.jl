@@ -1,5 +1,5 @@
 using Test, Chairmarks
-using Polyline
+using GooglePolyline
 
 encoded = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
 
