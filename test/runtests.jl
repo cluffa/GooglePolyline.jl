@@ -24,12 +24,6 @@ end
     end
 end
 
-@info "decode_polyline(encoded)"
-@info @b decode_polyline(encoded)
-@info "encode_polyline(points)"
-@info @b encode_polyline(points)
-
-# Scaling benchmarks
 # Scaling benchmarks
 function generate_data(n)
     points = [(rand() * 180 - 90, rand() * 360 - 180) for _ in 1:n]
@@ -43,13 +37,27 @@ points_large, encoded_large = generate_data(1000)
 points_xlarge, encoded_xlarge = generate_data(10000)
 
 @info "Scaling Benchmarks (Decode)"
-@info "Small (3 points)" @b decode_polyline(encoded_small)
-@info "Medium (100 points)" @b decode_polyline(encoded_medium)
-@info "Large (1000 points)" @b decode_polyline(encoded_large)
-@info "XLarge (10000 points)" @b decode_polyline(encoded_xlarge)
-
+@info "Small (3 points)"
+@info @b decode_polyline(encoded_small)
+println()
+@info "Medium (100 points)" 
+@info @b decode_polyline(encoded_medium)
+println()
+@info "Large (1000 points)" 
+@info @b decode_polyline(encoded_large)
+println()
+@info "XLarge (10000 points)" 
+@info @b decode_polyline(encoded_xlarge)
+println()
 @info "Scaling Benchmarks (Encode)"
-@info "Small (3 points)" @b encode_polyline(points_small)
-@info "Medium (100 points)" @b encode_polyline(points_medium)
-@info "Large (1000 points)" @b encode_polyline(points_large)
-@info "XLarge (10000 points)" @b encode_polyline(points_xlarge)
+@info "Small (3 points)" 
+@info @b encode_polyline(points_small)
+println()
+@info "Medium (100 points)" 
+@info @b encode_polyline(points_medium)
+println()
+@info "Large (1000 points)" 
+@info @b encode_polyline(points_large)
+println()
+@info "XLarge (10000 points)" 
+@info @b encode_polyline(points_xlarge)
