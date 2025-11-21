@@ -9,9 +9,11 @@ export encode_polyline, decode_polyline
 
 Encodes a sequence of lat,lng points into a polyline string using Google's encoding algorithm.
 """
-function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
+function encode_polyline(points::Vector{Tuple{Float64,Float64}})::String
     # Preallocate buffer with a reasonable size estimate (6 chars per coordinate * 2 coordinates per point)
-    buf = IOBuffer(sizehint=12*length(points))
+    # We allocate directly to the target capacity to avoid resizing allocations
+    buf = Vector{UInt8}(undef, 12 * length(points))
+    empty!(buf)
     prev_lat = 0  # Store the previous lat value for delta encoding
     prev_lon = 0  # Store the previous lng value for delta encoding
     for (lat, lon) in points
@@ -27,23 +29,23 @@ function encode_polyline(points::Vector{Tuple{Float64, Float64}})::String
         encode_value!(dlat, buf)
         encode_value!(dlon, buf)
     end
-    return String(take!(buf))
+    return String(buf)
 end
 
 
 """
-    encode_value!(n::Int, buf::IOBuffer)
+    encode_value!(n::Int, buf::Vector{UInt8})
 
 Encodes a single coordinate difference value using Google's encoding algorithm.
 """
-function encode_value!(n::Int, buf::IOBuffer)::Nothing
+@inline function encode_value!(n::Int, buf::Vector{UInt8})::Nothing
     value = n < 0 ? ~(n << 1) : (n << 1)
     while value >= 0x20
         byte = (0x20 | (value & 0x1f)) + 63
-        write(buf, Char(byte))
+        push!(buf, UInt8(byte))
         value >>= 5
     end
-    write(buf, Char(value + 63))
+    push!(buf, UInt8(value + 63))
     return nothing
 end
 
@@ -52,8 +54,8 @@ end
 
 Decodes a polyline string into a sequence of lat,lng points using Google's encoding algorithm.
 """
-function decode_polyline(encoded::String)::Vector{Tuple{Float64, Float64}}
-    points = Tuple{Float64, Float64}[]
+function decode_polyline(encoded::String)::Vector{Tuple{Float64,Float64}}
+    points = Tuple{Float64,Float64}[]
     cu = codeunits(encoded)
     len = length(cu)
     index = 1
@@ -81,7 +83,7 @@ end
 Decodes a single coordinate difference value from the polyline string.
 Returns the decoded value and the new string index.
 """
-function decode_value(encoded::AbstractVector{UInt8}, index::Int)::Tuple{Int, Int}
+@inline function decode_value(encoded::AbstractVector{UInt8}, index::Int)::Tuple{Int,Int}
     result = 0
     shift = 0
     byte = 0x20
