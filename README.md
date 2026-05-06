@@ -1,5 +1,8 @@
 # GooglePolyline.jl
 
+[![CI](https://github.com/cluffa/GooglePolyline.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/cluffa/GooglePolyline.jl/actions/workflows/CI.yml)
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://cluffa.github.io/GooglePolyline.jl/stable)
+
 A Julia implementation for encoding and decoding [Google's Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm).
 
 ## Usage
