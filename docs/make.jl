@@ -5,6 +5,8 @@ makedocs(
     sitename = "GooglePolyline.jl",
     format = Documenter.HTML(),
     modules = [GooglePolyline],
+    checkdocs = :exports,
+    warnonly = [:missing_docs, :cross_references],
     pages = [
         "Home" => "index.md",
     ]
